@@ -1,0 +1,61 @@
+services:
+  # PHP & Apache service
+  web:
+    image: php:8.1-apache
+    container_name: php-api-web
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
+      # - ./docker/apache/apache2.conf:/etc/apache2/apache2.conf
+      - ./src:/var/www/html/src
+      - ./vendor:/var/www/html/vendor
+      - ./logs/apache:/var/log/apache2
+    depends_on:
+      - db
+      #Provide ENV vars for the application
+    environment:
+      - PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT}
+      - APP_ENV=development
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+    command: >
+      bash -c "a2enmod rewrite &&
+               a2enmod headers &&
+               docker-php-ext-install pdo pdo_mysql &&
+               chown -R www-data:www-data /var/www/html &&
+               chmod -R 755 /var/www/html &&
+               apache2-foreground"
+
+  # MySQL service
+  db:
+    image: mysql:8.0
+    container_name: php-api-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # phpMyAdmin (optional but helpful)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: php-api-phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASS}
+    depends_on:
+      - db
+
+volumes:
+  mysql_data:
